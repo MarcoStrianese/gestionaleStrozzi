@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d1d1f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Strozzi">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Studio Strozzi · Appuntamenti</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="vendor/supabase.js"></script>
+  <script src="vendor/fullcalendar.min.js"></script>
+  <script src="vendor/fullcalendar-it.min.js"></script>
+</head>
+<body>
+
+<!-- Avvio -->
+<div id="boot" class="boot"><img src="icons/logo.png" alt=""></div>
+
+<!-- Configurazione mancante -->
+<section id="setup" class="center-screen" hidden>
+  <div class="card narrow">
+    <img class="login-logo" src="icons/logo.png" alt="Logo Dr. Strozzi">
+    <h2>Configurazione mancante</h2>
+    <p>Compila il file <code>js/config.js</code> con URL e chiave del progetto Supabase
+      (vedi <em>guida/01_Supabase.md</em>), poi ricarica la pagina.</p>
+  </div>
+</section>
+
+<!-- Login -->
+<section id="login" class="center-screen" hidden>
+  <form id="login-form" class="card narrow" autocomplete="on">
+    <img class="login-logo" src="icons/logo.png" alt="Logo Dr. Strozzi">
+    <h2>Accedi</h2>
+    <p class="muted small">Basta farlo una volta: l'app ti ricorderà su questo dispositivo.</p>
+    <label class="field">
+      <span>Email</span>
+      <input type="email" id="login-email" autocomplete="username" inputmode="email">
+    </label>
+    <label class="field">
+      <span>Password</span>
+      <input type="password" id="login-password" autocomplete="current-password" required>
+    </label>
+    <p id="login-error" class="error-text" hidden></p>
+    <button class="btn primary block" type="submit" id="login-btn">Entra</button>
+  </form>
+</section>
+
+<!-- App -->
+<div id="app" hidden>
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="icons/logo.png" alt="">
+      <div><strong>Studio Strozzi</strong><span>Appuntamenti</span></div>
+    </div>
+    <nav class="side-nav">
+      <button data-view="calendar" class="nav-btn"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg><span>Calendario</span></button>
+      <button data-view="clients" class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.4 1.9 5 5.4"/></svg><span>Clienti</span></button>
+      <button data-view="reminders" class="nav-btn"><svg viewBox="0 0 24 24"><path d="M4 5.5h16v10H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg><span>Reminder</span></button>
+      <button data-view="settings" class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg><span>Impostazioni</span></button>
+    </nav>
+    <div class="side-foot">
+      <div id="side-status" class="status-pill"></div>
+      <div id="side-version" class="muted small" style="margin-top:6px"></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 id="view-title">Calendario</h1>
+      <div class="topbar-actions">
+        <span id="top-status" class="status-pill mobile-only"></span>
+        <button class="btn primary desktop-only" id="btn-new-appt"><span class="plus">+</span> Nuovo appuntamento</button>
+      </div>
+    </header>
+
+    <!-- CALENDARIO -->
+    <section class="view" id="view-calendar">
+      <div class="legend">
+        <span><i class="dot first"></i>Prima visita</span>
+        <span><i class="dot check"></i>Check</span>
+        <span><i class="dot nophone"></i>Senza cliente</span>
+        <span class="muted">✓ reminder inviato</span>
+      </div>
+      <div id="calendar"></div>
+    </section>
+
+    <!-- CLIENTI -->
+    <section class="view" id="view-clients" hidden>
+      <div class="toolbar">
+        <input type="search" id="client-search" placeholder="Cerca per nome o telefono…" autocomplete="off">
+        <button class="btn primary" id="btn-new-client">+ Nuovo cliente</button>
+      </div>
+      <div id="client-list" class="list"></div>
+    </section>
+
+    <!-- REMINDER -->
+    <section class="view" id="view-reminders" hidden>
+      <div class="grid-2">
+        <div class="card">
+          <div class="row-between">
+            <div>
+              <h3>Reminder automatici</h3>
+              <p class="muted small" id="rem-enabled-label">—</p>
+            </div>
+            <label class="switch"><input type="checkbox" id="rem-enabled"><span></span></label>
+          </div>
+          <dl class="kv">
+            <dt>Prossimo invio</dt><dd id="rem-next">—</dd>
+            <dt>Anticipo</dt><dd id="rem-window">—</dd>
+            <dt>Ultima esecuzione</dt><dd id="rem-last">—</dd>
+          </dl>
+          <div class="row gap">
+            <button class="btn primary" id="btn-run-now">Esegui ora</button>
+            <button class="btn ghost" id="btn-refresh-log">Aggiorna</button>
+          </div>
+          <p id="run-result" class="run-result" hidden></p>
+        </div>
+        <div class="card">
+          <h3>In coda <span class="badge" id="queue-count">0</span></h3>
+          <p class="muted small" id="queue-hint">Appuntamenti che riceveranno il reminder al prossimo invio.</p>
+          <div id="queue-list" class="mini-list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row-between wrap">
+          <h3>Registro invii</h3>
+          <div class="chips" id="log-filter">
+            <button class="chip active" data-f="">Tutti</button>
+            <button class="chip" data-f="inviato">Inviati</button>
+            <button class="chip" data-f="errore">Errori</button>
+            <button class="chip" data-f="saltato">Saltati</button>
+            <button class="chip" data-f="info">Esecuzioni</button>
+          </div>
+        </div>
+        <div id="log-list" class="log-list"></div>
+      </div>
+    </section>
+
+    <!-- IMPOSTAZIONI -->
+    <section class="view" id="view-settings" hidden>
+      <form id="settings-form">
+        <div class="card">
+          <h3>Pianificazione invii</h3>
+          <p class="muted small">Il server controlla ogni ora: quando giorno e ora coincidono invia i reminder. Funziona anche a PC spento.</p>
+          <div class="field">
+            <span>Giorni di invio</span>
+            <div class="chips" id="set-days">
+              <button type="button" class="chip" data-d="1">Lun</button>
+              <button type="button" class="chip" data-d="2">Mar</button>
+              <button type="button" class="chip" data-d="3">Mer</button>
+              <button type="button" class="chip" data-d="4">Gio</button>
+              <button type="button" class="chip" data-d="5">Ven</button>
+              <button type="button" class="chip" data-d="6">Sab</button>
+              <button type="button" class="chip" data-d="7">Dom</button>
+            </div>
+          </div>
+          <div class="grid-fields">
+            <label class="field"><span>Ora di invio (ora italiana)</span>
+              <select id="set-hour"></select>
+            </label>
+            <label class="field"><span>Anticipo: appuntamenti nei prossimi</span>
+              <div class="input-suffix"><input type="number" id="set-window" min="1" max="30" required><em>giorni</em></div>
+            </label>
+          </div>
+          <p class="muted small" id="set-window-hint"></p>
+        </div>
+
+        <div class="card">
+          <h3>Testi dei messaggi</h3>
+          <p class="muted small">Segnaposto disponibili (clicca per inserirli):
+            <span class="chips inline" id="placeholders">
+              <button type="button" class="chip tiny" data-ph="{nome}">{nome}</button>
+              <button type="button" class="chip tiny" data-ph="{cognome}">{cognome}</button>
+              <button type="button" class="chip tiny" data-ph="{data}">{data}</button>
+              <button type="button" class="chip tiny" data-ph="{ora}">{ora}</button>
+              <button type="button" class="chip tiny" data-ph="{luogo}">{luogo}</button>
+            </span>
+          </p>
+          <label class="field"><span><i class="dot first"></i> Template prima visita</span>
+            <textarea id="set-tpl-first" rows="4" required></textarea>
+            <small class="counter" data-for="set-tpl-first"></small>
+          </label>
+          <div class="preview" data-preview="set-tpl-first"></div>
+          <label class="field"><span><i class="dot check"></i> Template check periodico</span>
+            <textarea id="set-tpl-check" rows="4" required></textarea>
+            <small class="counter" data-for="set-tpl-check"></small>
+          </label>
+          <div class="preview" data-preview="set-tpl-check"></div>
+        </div>
+
+        <div class="card">
+          <h3>Appuntamenti e registro</h3>
+          <div class="grid-fields three">
+            <label class="field"><span>Durata prima visita</span>
+              <div class="input-suffix"><input type="number" id="set-dur-first" min="5" max="480" step="5" required><em>min</em></div>
+            </label>
+            <label class="field"><span>Durata check</span>
+              <div class="input-suffix"><input type="number" id="set-dur-check" min="5" max="480" step="5" required><em>min</em></div>
+            </label>
+            <label class="field"><span>Conserva registro per</span>
+              <div class="input-suffix"><input type="number" id="set-retention" min="1" max="60" required><em>giorni</em></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="save-bar">
+          <span id="settings-dirty" class="muted small"></span>
+          <button class="btn primary" type="submit" id="btn-save-settings">Salva impostazioni</button>
+        </div>
+      </form>
+
+      <div class="card">
+        <h3>Google Calendar</h3>
+        <p class="muted small">Sincronizzazione nei due sensi: ciò che è su Google compare qui e viceversa. Avviene in automatico ogni ora e prima di ogni invio.</p>
+        <div id="gcal-box" class="gcal-box">Caricamento…</div>
+      </div>
+
+      <div class="card">
+        <h3>Account</h3>
+        <div class="row-between wrap">
+          <span id="account-email" class="muted"></span>
+          <button class="btn ghost danger" id="btn-logout">Esci</button>
+        </div>
+      </div>
+      <p class="muted small center">Studio Strozzi · Appuntamenti · v<span id="app-version"></span></p>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button data-view="calendar" class="nav-btn"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg><span>Calendario</span></button>
+    <button data-view="clients" class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.4 1.9 5 5.4"/></svg><span>Clienti</span></button>
+    <button data-view="reminders" class="nav-btn"><svg viewBox="0 0 24 24"><path d="M4 5.5h16v10H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg><span>Reminder</span></button>
+    <button data-view="settings" class="nav-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg><span>Impostazioni</span></button>
+  </nav>
+  <button class="fab mobile-only" id="fab-new" aria-label="Nuovo appuntamento">+</button>
+</div>
+
+<!-- Dialog appuntamento -->
+<dialog id="dlg-appt" class="sheet">
+  <form id="appt-form" method="dialog" novalidate>
+    <header class="sheet-head">
+      <h2 id="appt-title">Nuovo appuntamento</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Chiudi">✕</button>
+    </header>
+    <div class="sheet-body">
+      <div id="appt-imported" class="notice" hidden></div>
+
+      <div class="field combo">
+        <span>Cliente</span>
+        <input type="text" id="appt-client" placeholder="Cerca cliente o scrivi un nuovo nome…" autocomplete="off">
+        <ul id="appt-client-list" class="combo-list" hidden></ul>
+      </div>
+      <div id="appt-newclient" class="grid-fields" hidden>
+        <label class="field"><span>Nome</span><input type="text" id="appt-first" autocomplete="off"></label>
+        <label class="field"><span>Cognome</span><input type="text" id="appt-last" autocomplete="off"></label>
+      </div>
+      <label class="field">
+        <span>Telefono <em class="req">obbligatorio per il reminder</em></span>
+        <input type="tel" id="appt-phone" placeholder="es. 333 123 4567" inputmode="tel" autocomplete="off">
+        <small id="appt-phone-hint" class="hint"></small>
+      </label>
+
+      <div class="field">
+        <span>Tipo di appuntamento</span>
+        <div class="segmented">
+          <label><input type="radio" name="appt-type" value="prima_visita"><span><i class="dot first"></i>Prima visita</span></label>
+          <label><input type="radio" name="appt-type" value="check"><span><i class="dot check"></i>Check di controllo</span></label>
+        </div>
+      </div>
+
+      <div class="grid-fields three">
+        <label class="field"><span>Giorno</span><input type="date" id="appt-date" required></label>
+        <label class="field"><span>Ora</span><input type="time" id="appt-time" step="300" required></label>
+        <label class="field"><span>Durata</span>
+          <select id="appt-duration">
+            <option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option>
+            <option value="45">45 min</option><option value="60">1 ora</option><option value="75">1 h 15</option>
+            <option value="90">1 h 30</option><option value="120">2 ore</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Luogo</span>
+        <input type="text" id="appt-location" placeholder="Studio…" autocomplete="off">
+        <div class="chips" id="appt-locations"></div>
+      </label>
+
+      <label class="field"><span>Note (facoltative)</span><textarea id="appt-notes" rows="2"></textarea></label>
+
+      <div id="appt-reminder" class="reminder-state" hidden></div>
+      <p id="appt-error" class="error-text" hidden></p>
+    </div>
+    <footer class="sheet-foot">
+      <button type="button" class="btn ghost danger" id="appt-delete" hidden>Elimina</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn ghost" data-close>Annulla</button>
+      <button type="submit" class="btn primary" id="appt-save">Salva</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog cliente -->
+<dialog id="dlg-client" class="sheet">
+  <form id="client-form" method="dialog" novalidate>
+    <header class="sheet-head">
+      <h2 id="client-title">Nuovo cliente</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Chiudi">✕</button>
+    </header>
+    <div class="sheet-body">
+      <div class="grid-fields">
+        <label class="field"><span>Nome</span><input type="text" id="cl-first" required></label>
+        <label class="field"><span>Cognome</span><input type="text" id="cl-last"></label>
+      </div>
+      <label class="field"><span>Telefono <em class="req">obbligatorio</em></span>
+        <input type="tel" id="cl-phone" inputmode="tel" required>
+        <small id="cl-phone-hint" class="hint"></small>
+      </label>
+      <label class="field"><span>Email (facoltativa)</span><input type="email" id="cl-email"></label>
+      <label class="field"><span>Note</span><textarea id="cl-notes" rows="3"></textarea></label>
+      <div id="cl-appts" class="mini-list"></div>
+      <p id="client-error" class="error-text" hidden></p>
+    </div>
+    <footer class="sheet-foot">
+      <button type="button" class="btn ghost danger" id="client-delete" hidden>Elimina</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn ghost" data-close>Annulla</button>
+      <button type="submit" class="btn primary">Salva</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Dialog conferma -->
+<dialog id="dlg-confirm" class="sheet confirm">
+  <div class="sheet-body" style="padding-top:20px"><p id="confirm-text" style="margin:0;font-size:15.5px"></p></div>
+  <footer class="sheet-foot">
+    <span class="spacer"></span>
+    <button type="button" class="btn ghost" id="confirm-cancel">Annulla</button>
+    <button type="button" class="btn primary" id="confirm-ok">Conferma</button>
+  </footer>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
