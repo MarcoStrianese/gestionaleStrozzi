@@ -67,3 +67,31 @@ export function nextRun(days, hour, from = new Date()) {
 
 export const initials = (c) => ((c.first_name?.[0] ?? "") + (c.last_name?.[0] ?? "")).toUpperCase() || "?";
 export const fullName = (c) => (c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() : "");
+
+/* ---------- date (ora locale del dispositivo) ---------- */
+export const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+export const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+export const addMonths = (d, n) => { const x = new Date(d); x.setDate(1); x.setMonth(x.getMonth() + n); return x; };
+export const startOfWeek = (d) => { const x = startOfDay(d); const wd = (x.getDay() + 6) % 7; return addDays(x, -wd); };
+export const startOfMonth = (d) => { const x = startOfDay(d); x.setDate(1); return x; };
+export const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+export const dayKey = (d) => toDateInput(d);
+export const minutesOf = (d) => d.getHours() * 60 + d.getMinutes();
+const F = (o) => new Intl.DateTimeFormat("it-IT", o);
+export const fmtWd = (d) => F({ weekday: "short" }).format(d).replace(".", "");
+export const fmtWdLong = (d) => F({ weekday: "long" }).format(d);
+export const fmtDayMonth = (d) => F({ day: "numeric", month: "long" }).format(d);
+export const fmtDayFull = (d) => F({ weekday: "long", day: "numeric", month: "long" }).format(d);
+export const fmtMonthYear = (d) => F({ month: "long", year: "numeric" }).format(d);
+export const fmtHM = (d) => F({ hour: "2-digit", minute: "2-digit" }).format(d);
+export function fmtRange(a, b) {
+  const sameM = a.getMonth() === b.getMonth();
+  return sameM ? `${a.getDate()} – ${b.getDate()} ${F({ month: "long", year: "numeric" }).format(b)}`
+    : `${a.getDate()} ${F({ month: "short" }).format(a)} – ${b.getDate()} ${F({ month: "short", year: "numeric" }).format(b)}`;
+}
+export function fmtDur(min) { if (min < 60) return `${min}′`; const h = Math.floor(min / 60), m = min % 60; return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`; }
+export function relDay(d) {
+  const t = startOfDay(new Date()), x = startOfDay(d), diff = Math.round((x - t) / 86400000);
+  if (diff === 0) return "oggi"; if (diff === 1) return "domani"; if (diff === -1) return "ieri";
+  return fmtDayFull(d);
+}
